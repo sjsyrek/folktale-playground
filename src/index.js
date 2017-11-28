@@ -1,4 +1,4 @@
-/** Failure Handling with Folktale
+/** Error Handling with Folktale
  * Folktale provides algebraic data types in the style of statically typed,
  * functional programming languages for use in JavaScript. The three types of
  * use for error handling are, in order of sophistication, `Maybe`, `Result`,
@@ -250,7 +250,9 @@ const emptyStringCheck = value => value === ''
   ? Nothing()
   : Just(value)
 
-const exceptionCheck = value => nullCheck(value).chain(undefinedCheck).chain(emptyStringCheck)
+const exceptionCheck = value => nullCheck(value)
+  .chain(undefinedCheck)
+  .chain(emptyStringCheck)
 
 const isRequiredMatch = (field, fieldName) => Validation.fromMaybe(exceptionCheck(field)).matchWith({
   Success: ({ value }) => Success(value),
