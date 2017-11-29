@@ -1,4 +1,6 @@
-/** Error Handling with Folktale
+/**
+ * Error Handling with Folktale
+ * 
  * Folktale provides algebraic data types in the style of statically typed,
  * functional programming languages for use in JavaScript. The three types of
  * use for error handling are, in order of sophistication, `Maybe`, `Result`,
@@ -7,11 +9,10 @@
  * library and potentially useful.
  */
 
-// `Maybe` - Models the presence or absence of a value.
-
-const Maybe = require('folktale/maybe')
-
-/** Maybe is a sum type with two values, `Just` and `Nothing`. `Just` represents
+/**
+ * `Maybe` - Models the presence or absence of a value.
+ *
+ * `Maybe` is a sum type with two values, `Just` and `Nothing`. `Just` represents
  * the presence of a value for an operation that may not return a value.
  * `Nothing` represents the absence of a value for the same operation.
  * `matchWith` implements FP-style pattern matching.
@@ -39,6 +40,8 @@ const Maybe = require('folktale/maybe')
  * safeGet(m, 'steven').chain(getBenefit) // => Nothing({})
  */
 
+const Maybe = require('folktale/maybe')
+
 const { Just, Nothing } = Maybe
 
 const safeGet = (map, key) => map instanceof Map && map.get(key)
@@ -54,8 +57,8 @@ const handleJust = value => `The age is ${value}.`
 
 const handleNothing = () => `No age available for given key.`
 
-/** Exception checks
- *  Basic checks for bad data where a `Maybe` value would be appropriate. 
+/**
+ * Exception checks - Basic checks for bad data where a `Maybe` value would be appropriate. 
  *
  * nullCheck(null)           // => Nothing({})
  * nullCheck(0)              // => Just({ value: 0 })
@@ -140,22 +143,32 @@ const exceptionCheck = value =>
   .chain(blankStringCheck)
   .chain(nanCheck)
 
-// `Result` - Models the result of operations that may fail.
+/**
+ * `Result` - Models the result of operations that may fail.
+ *
+ * `Result` is a sum type with two values, `Ok` and `Error`. A value wrapped in
+ * `Ok` represents a successful computation, like a `Just` value of type
+ * `Maybe`. An `Error` wraps an error message or other value, however, which
+ * makes this type more informative than `Maybe`, which is sometimes desirable.
+ */
+
+const Result = require('folktale/result')
 
 
 
-// `Validation` - models the result of operations that may fail and aggregates the failures.
-
-const Validation = require('folktale/validation')
 
 /**
- * Validation is a sum type with two values, `Success` and `Failure`. When
+ * `Validation` - models the result of operations that may fail and aggregates the failures.
+ *
+ * `Validation` is a sum type with two values, `Success` and `Failure`. When
  * validating values using this datatype, the result is wrapped in either one or
  * the other, depending on the result (i.e. success or failure) of the
  * corresponding validation function. When composed together, the final value of
  * these functions will either be `Success` wrapping the last successfully validated
  * value or `Failure` wrapping an aggregation of those values.
  */
+
+const Validation = require('folktale/validation')
 
 const { Success, Failure, collect } = Validation
 
@@ -181,7 +194,9 @@ const testForm4 = makeForm('good@email.com', 'abc123+')
 
 const testForm5 = makeForm('good@email.com', 'abc123+-=') // only valid form
 
-/** Validation rules
+/**
+ * Validation rules
+ * 
  * These are the basic elements of validation. They can be combined to form more
  * complex validation rules and reused for multiple fields. Note that the
  * Failure error messages are enclosed in singleton arrays. This makes it easier
@@ -204,7 +219,9 @@ const matches = (field, regexp, value) => regexp.test(value)
   ? Success(value)
   : Failure([`Field <${field}> does not match expression ${regexp}.`])
 
-/** Field validations
+/**
+ * Field validations
+ * 
  * These are possible validation rules for specific form fields. They are made
  * by concatenating the above validation rules together. They will also return
  * either `Success` or a collection of `Failure`s.
@@ -219,7 +236,9 @@ const isValidPassword = (field, value) =>
     minLength(field, PASSWORD_MIN, value)).concat(
       matches(field, PASSWORD_REGEX, value))
 
-/** Form validations
+/**
+ * Form validations
+ * 
  * These are sample form validations. Given an object representing a form, these
  * functions use the field validations above to validate an entire form and
  * return either Success or a collection of Failures.
@@ -250,7 +269,9 @@ const validateFormCollect = form => collect([
 
 const validateForms = forms => collect(forms.map(form => validateForm(form)))
 
-/** Validation handling
+/**
+ * Validation handling
+ * 
  * Once you have your Validation value, you need to do something with it. That
  * is, after a form is validated, you will want to specify a code path to follow
  * depending on the outcome.
@@ -272,7 +293,8 @@ const successHandler = value => `Success: ${value}`
 const failureHandler = value => `Failure: [\n${value.join(",\n")}\n]`
 
 /**
- * Reducing values.
+ * Reducing values
+ * 
  * Reduce or fold over Validation values, similar to Array.reduce.
  * `fold` applies a function to a Validation value and accumulates the results.
  * 
@@ -289,7 +311,8 @@ const validateWithFold = form => validateForm(form).fold(failureHandler, success
 const handleValidationWithFold = validation => validation.fold(failureHandler, successHandler)
 
 /**
- * Transforming values.
+ * Transforming values
+ *
  * Apply functions to Validation values, similar to Array.map.
  * `map` transforms `Success` values.
  * `mapFailure` transforms `Failure` values.
@@ -312,7 +335,9 @@ const validateFailure = validation => validation.mapFailure(failureTransformatio
 
 const validateSimplify = validation => validation.bimap(failureTransformation, successTransformation)
 
-/** Combining Maybe with Validation
+/**
+ * Combining Maybe with Validation
+ * 
  * Sometimes it's useful to use `Maybe` value along with `Validation` values.
  * The functions below could easily be rewritten to return `Success` or
  * `Failure` instead, but these versions are more portable.
