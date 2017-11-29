@@ -54,6 +54,92 @@ const handleJust = value => `The age is ${value}.`
 
 const handleNothing = () => `No age available for given key.`
 
+/** Exception checks
+ *  Basic checks for bad data where a `Maybe` value would be appropriate. 
+ *
+ * nullCheck(null)           // => Nothing({})
+ * nullCheck(0)              // => Just({ value: 0 })
+ * nullCheck(undefined)      // => Just({ value: undefined })
+ *
+ * undefinedCheck(undefined) // => Nothing({})
+ * undefinedCheck(0)         // => Just({ value: 0 })
+ * undefinedCheck(null)      // => Just({ value: null })
+ *
+ * emptyStringCheck('')      // => Nothing({})
+ * emptyStringCheck(0)       // => Just({ value: 0 })
+ * emptyStringCheck([])      // => Just({ value: []})
+ * emptyStringCheck(' ')     // => Just({ value: " " })
+ * emptyStringCheck([] + []) // => Nothing({}) // wat?
+ *
+ * blankStringCheck(' ')     // => Nothing({})
+ * blankStringCheck(' \n ')  // => Nothing({})
+ *
+ * nanCheck(NaN)             // => Nothing({})
+ * nanCheck(0)               // => Just({ value: 0 })
+ *
+ * truthyCheck(null)         // => Nothing({})
+ * truthyCheck(undefined)    // => Nothing({})
+ * truthyCheck(NaN)          // => Nothing({})
+ * truthyCheck('')           // => Nothing({})
+ * truthyCheck(0)            // => Nothing({})
+ * truthyCheck(false)        // => Nothing({})
+ * truthyCheck(true)         // => Just({ value: true })
+ * truthyCheck(' ')          // => Just({ value: " " })
+ * truthyCheck({})           // => Just({ value: {} })
+ *
+ * infinityCheck(Infinity)   // => Nothing({})
+ * infinityCheck(-Infinity)  // => Nothing({})
+ * infinityCheck(0)          // => Nothing({})
+ *
+ * exceptionCheck(null)      // => Nothing({})
+ * exceptionCheck(undefined) // => Nothing({})
+ * exceptionCheck(NaN)       // => Nothing({})
+ * exceptionCheck('')        // => Nothing({})
+ * exceptionCheck(' ')       // => Nothing({})
+ * exceptionCheck(0)         // => Just({ value: 0 })
+ */
+
+const nullCheck = value => value === null
+  ? Nothing()
+  : Just(value)
+
+const undefinedCheck = value => value === undefined
+  ? Nothing()
+  : Just(value)
+
+const emptyStringCheck = value => value === ''
+  ? Nothing()
+  : Just(value)
+
+const blankStringCheck = value => value.trim() === ''
+  ? Nothing()
+  : Just(value)
+
+const nanCheck = value => isNaN(value)
+  ? Nothing()
+  : Just(value)
+
+const truthyCheck = value => value
+  ? Just(value)
+  : Nothing()
+
+const posInfinityCheck = value => value === Infinity
+  ? Nothing()
+  : Just(value)
+
+const negInfinityCheck = value => value === -Infinity
+  ? Nothing()
+  : Just(value)
+
+const infinityCheck = value => posInfinityCheck(value).chain(negInfinityCheck)
+
+const exceptionCheck = value =>
+  nullCheck(value)
+  .chain(undefinedCheck)
+  .chain(emptyStringCheck)
+  .chain(blankStringCheck)
+  .chain(nanCheck)
+
 // `Result` - Models the result of operations that may fail.
 
 
@@ -237,22 +323,6 @@ const validateSimplify = validation => validation.bimap(failureTransformation, s
  * isRequiredMap(null, 'name')      // => Failure({ value: [{ name: "name is required" }] })
  * isRequiredMap(undefined, 'name') // => Failure({ value: [{ name: "name is required" }] })
  */
-
-const nullCheck = value => value === null
-  ? Nothing()
-  : Just(value)
-
-const undefinedCheck = value => value === undefined
-  ? Nothing()
-  : Just(value)
-
-const emptyStringCheck = value => value === ''
-  ? Nothing()
-  : Just(value)
-
-const exceptionCheck = value => nullCheck(value)
-  .chain(undefinedCheck)
-  .chain(emptyStringCheck)
 
 const isRequiredMatch = (field, fieldName) => Validation.fromMaybe(exceptionCheck(field)).matchWith({
   Success: ({ value }) => Success(value),
