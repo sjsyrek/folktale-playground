@@ -58,7 +58,9 @@ const handleJust = value => `The age is ${value}.`
 const handleNothing = () => `No age available for given key.`
 
 /**
- * Exception checks - Basic checks for bad data where a `Maybe` value would be appropriate. 
+ * Exception checks with `Maybe`
+ *
+ * Basic checks for bad data where a `Maybe` value would be appropriate. 
  *
  * nullCheck(null)           // => Nothing({})
  * nullCheck(0)              // => Just({ value: 0 })
@@ -110,15 +112,15 @@ const undefinedCheck = value => value === undefined
   ? Nothing()
   : Just(value)
 
+const nanCheck = value => isNaN(value)
+  ? Nothing()
+  : Just(value)
+
 const emptyStringCheck = value => value === ''
   ? Nothing()
   : Just(value)
 
-const blankStringCheck = value => value.trim() === ''
-  ? Nothing()
-  : Just(value)
-
-const nanCheck = value => isNaN(value)
+const blankStringCheck = value => typeof value === 'string' && value.trim() === '' 
   ? Nothing()
   : Just(value)
 
@@ -134,13 +136,14 @@ const negInfinityCheck = value => value === -Infinity
   ? Nothing()
   : Just(value)
 
+const badStringCheck = value => emptyStringCheck(value).chain(blankStringCheck)
+
 const infinityCheck = value => posInfinityCheck(value).chain(negInfinityCheck)
 
 const exceptionCheck = value =>
   nullCheck(value)
   .chain(undefinedCheck)
-  .chain(emptyStringCheck)
-  .chain(blankStringCheck)
+  .chain(badStringCheck)
   .chain(nanCheck)
 
 /**
@@ -150,12 +153,130 @@ const exceptionCheck = value =>
  * `Ok` represents a successful computation, like a `Just` value of type
  * `Maybe`. An `Error` wraps an error message or other value, however, which
  * makes this type more informative than `Maybe`, which is sometimes desirable.
+ * `getOrElse` extracts a value from a `Result` or returns a default value.
+ * `merge` returns whatever is wrapped in the `Result`.
+ *
+ * safeDivide(10, 5)                         // => Result.Ok({ value: 2 })
+ * safeDivide(10, 0)                         // => Result.Error({ value: "Division by zero." })
+ *
+ * safeDivide(10, 5).getOrElse('Try again.') // => 2
+ * safeDivide(10, 0).getOrElse('Try again.') // => 'Try again.'
+ *
+ * safeDivide(10, 5).merge()                 // => 2
+ * safeDivide(10, 0).merge()                 // => 'Division by zero.'
  */
 
 const Result = require('folktale/result')
 
+const safeDivide = (dividend, divisor) => divisor === 0
+  ? Result.Error('Division by zero.')
+  : Result.Ok(dividend / divisor)
 
+/**
+ * Exception checks with `Result`
+ *
+ * Checks for bad data with error messags, an improved version of the above.
+ * `chain` works the same way as for `Maybe`.
+ * 
+ * exceptionCheckR(null)      // => Result.Error({ value: "Error: value is null." }) 
+ * exceptionCheckR(undefined) // => Result.Error({ value: "Error: value is undefined." }) 
+ * exceptionCheckR(NaN)       // => Result.Error({ value: "Error: value is not a number." })
+ * exceptionCheckR('')        // => Result.Error({ value: "Error: value is an empty string." })
+ * exceptionCheckR(' ')       // => Result.Error({ value: "Error: value is a blank string." })
+ * exceptionCheckR(Infinity)  // => Result.Error({ value: "Error: value is Infinity." })
+ * exceptionCheckR(-Infinity) // => Result.Error({ value: "Error: value is -Infinity." })
+ * exceptionCheckR(0)         // => Result.Ok({ value: 0 }) 
+ */
 
+const nullCheckR = value => value === null
+  ? Result.Error('Error: value is null.')
+  : Result.Ok(value)
+
+const undefinedCheckR = value => value === undefined
+  ? Result.Error('Error: value is undefined.')
+  : Result.Ok(value)
+
+const nanCheckR = value => isNaN(value)
+  ? Result.Error('Error: value is not a number.')
+  : Result.Ok(value)
+
+const emptyStringCheckR = value => value === ''
+  ? Result.Error('Error: value is an empty string.')
+  : Result.Ok(value)
+
+const blankStringCheckR = value => typeof value === 'string' && value.trim() === ''
+  ? Result.Error('Error: value is a blank string.')
+  : Result.Ok(value)
+
+const posInfinityCheckR = value => value === Infinity
+  ? Result.Error('Error: value is Infinity.')
+  : Result.Ok(value)
+
+const negInfinityCheckR = value => value === -Infinity
+  ? Result.Error('Error: value is -Infinity.')
+  : Result.Ok(value)
+
+const badStringCheckR = value => emptyStringCheckR(value).chain(blankStringCheckR)
+
+const infinityCheckR = value => posInfinityCheckR(value).chain(negInfinityCheckR)
+
+const exceptionCheckR = value =>
+  nullCheckR(value)
+  .chain(undefinedCheckR)
+  .chain(badStringCheckR)
+  .chain(nanCheckR)
+  .chain(infinityCheckR)
+
+/**
+ * Error handling with `Result`
+ *
+ * `orElse` allows more general error handling than `.getOrElse`. Like `chain`,
+ * successes return an `Ok` value, but in this case errors invoke execution of
+ * the given function.
+ * `matchWith` implements FP-style pattern matching.
+ *
+ * parseData(0)     // => Result.Ok({ value: 0 })
+ * parseData('')    // => Result.Ok({ value: "" })
+ * parseData(true)  // => Result.Ok({ value: true })
+ * parseData(null)  // => Result.Error({ value: "null is not a value I can parse." })
+ *
+ * const d1 = parseData(0)
+ * const d2 = parseData(null)
+ * errorHandler(d1) // => 'Ok: 0'
+ * errorHandler(d2) // => 'Error: null is not a value I can parse.'
+ */
+
+const parseNumber = value => typeof value === 'number'
+  ? Result.Ok(value)
+  : Result.Error(`${value} is not a number.`)
+
+const parseString = value => typeof value === 'string'
+  ? Result.Ok(value)
+  : Result.Error(`${value} is not a string.`)
+
+const parseBoolean = value => typeof value === 'boolean'
+  ? Result.Ok(value)
+  : Result.Error(`${value} is not a boolean.`)
+
+const parseData = value =>
+  parseNumber(value)
+  .orElse(_ => parseString(value))
+  .orElse(_ => parseBoolean(value))
+  .orElse(_ => parseError(value))
+
+const parseError = value => Result.Error(`${value} is not a value I can parse.`)
+
+// Same as the above but with a slightly cleaner presentation using `mapError`.
+const parseDataMap = value =>
+  parseNumber(value)
+  .orElse(_ => parseString(value))
+  .orElse(_ => parseBoolean(value))
+  .mapError(_ => `${value} is not a value I can parse.`)
+
+const errorHandler = result => result.matchWith({
+  Ok:    ({ value }) => `Ok: ${value}`,
+  Error: ({ value }) => `Error: ${value}`
+})
 
 /**
  * `Validation` - models the result of operations that may fail and aggregates the failures.
